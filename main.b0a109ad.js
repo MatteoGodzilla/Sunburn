@@ -55125,29 +55125,40 @@ Array.from(document.getElementsByClassName("topBar")).forEach(function (bar) {
   if (ev.srcElement) {
     var value = Number(ev.srcElement.value);
 
-    var _iterator = _createForOfIteratorHelper(notes),
-        _step;
+    if (value >= 1) {
+      var _iterator = _createForOfIteratorHelper(notes),
+          _step;
 
-    try {
-      for (_iterator.s(); !(_step = _iterator.n()).done;) {
-        var n = _step.value;
-        if (n.type === _CustomTypes.noteTypes.BPM) n.extra = value;
+      try {
+        for (_iterator.s(); !(_step = _iterator.n()).done;) {
+          var n = _step.value;
+          if (n.type === _CustomTypes.noteTypes.BPM) n.extra = value;
+        }
+      } catch (err) {
+        _iterator.e(err);
+      } finally {
+        _iterator.f();
       }
-    } catch (err) {
-      _iterator.e(err);
-    } finally {
-      _iterator.f();
     }
   }
 });
 (_b = document.getElementById("inputPos")) === null || _b === void 0 ? void 0 : _b.addEventListener("change", function (ev) {
-  if (ev.srcElement) noteRender.time = Number(ev.srcElement.value);
+  if (ev.srcElement) {
+    var t = Number(ev.srcElement.value);
+    if (t >= 0) noteRender.time = t;
+  }
 });
 (_c = document.getElementById("inputTimeScale")) === null || _c === void 0 ? void 0 : _c.addEventListener("change", function (ev) {
-  if (ev.srcElement) timeWarp = Number(ev.srcElement.value);
+  if (ev.srcElement) {
+    var scale = Number(ev.srcElement.value);
+    if (scale >= 0.2) timeWarp = scale;
+  }
 });
 (_d = document.getElementById("inputUIScale")) === null || _d === void 0 ? void 0 : _d.addEventListener("change", function (ev) {
-  if (ev.srcElement) noteRender.setScale(Number(ev.srcElement.value));
+  if (ev.srcElement) {
+    var scale = Number(ev.srcElement.value);
+    if (scale >= 50) noteRender.setScale(scale);
+  }
 });
 (_e = document.getElementById("inputBPMRes")) === null || _e === void 0 ? void 0 : _e.addEventListener("change", function (ev) {
   if (ev.srcElement) {
@@ -55159,10 +55170,16 @@ Array.from(document.getElementsByClassName("topBar")).forEach(function (bar) {
   if (ev.srcElement) noteManager.selectedNote.type = Number(ev.srcElement.value);
 });
 (_g = document.getElementById("inputNoteTime")) === null || _g === void 0 ? void 0 : _g.addEventListener("change", function (ev) {
-  if (ev.srcElement) noteManager.selectedNote.time = Number(ev.srcElement.value);
+  if (ev.srcElement) {
+    var t = Number(ev.srcElement.value);
+    if (t >= 0) noteManager.selectedNote.time = t;
+  }
 });
 (_h = document.getElementById("inputNoteLength")) === null || _h === void 0 ? void 0 : _h.addEventListener("change", function (ev) {
-  if (ev.srcElement) noteManager.selectedNote.length = Number(ev.srcElement.value);
+  if (ev.srcElement) {
+    var t = Number(ev.srcElement.value);
+    if (t >= 0) noteManager.selectedNote.length = t;
+  }
 });
 (_j = document.getElementById("inputNoteExtra")) === null || _j === void 0 ? void 0 : _j.addEventListener("change", function (ev) {
   if (ev.srcElement) noteManager.selectedNote.extra = Number(ev.srcElement.value);
@@ -55302,7 +55319,7 @@ function keyPress(ev) {
       timeWarp += 0.1;
       updateGUI();
     } else if (ev.key == "=") {
-      timeWarp -= 0.1;
+      timeWarp -= timeWarp >= 0.2 ? 0.1 : 0.0;
       updateGUI();
     } else if (ev.key == "l") {
       var input = document.createElement("input");
@@ -55500,7 +55517,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52022" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52940" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
