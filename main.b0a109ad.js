@@ -55163,7 +55163,7 @@ Array.from(document.getElementsByClassName("topBar")).forEach(function (bar) {
 (_e = document.getElementById("inputBPMRes")) === null || _e === void 0 ? void 0 : _e.addEventListener("change", function (ev) {
   if (ev.srcElement) {
     var v = Number(ev.srcElement.value);
-    noteRender.bpmResolution = v !== 0 ? 1 / v : 0.25;
+    noteRender.bpmResolution = v >= 1 ? 1 / v : 0.25;
   }
 });
 (_f = document.getElementById("inputNoteType")) === null || _f === void 0 ? void 0 : _f.addEventListener("change", function (ev) {
