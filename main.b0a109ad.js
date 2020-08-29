@@ -49256,6 +49256,7 @@ var NoteRender = /*#__PURE__*/function () {
     this.timeScale = 100;
     this.clickerOffset = 100;
     this.bpmResolution = 1 / 4;
+    this.bpmTickTimeVisible = true;
     this.crossPosition = 1;
     this.padding = 10;
     this.clickerBaseLeft = new PIXI.Sprite();
@@ -49903,7 +49904,7 @@ var NoteRender = /*#__PURE__*/function () {
             graphicsObject.sprite.zIndex = Layers.NOTE;
           } else if (note.type === _CustomTypes.noteTypes.BPM_FAKE) {
             var ev = this.getEvent();
-            x -= this.uiScale * 4; //let lengthY = renderHeight - ((note.time + note.length - this.time) / this.timeScale) * renderHeight
+            x -= this.uiScale * 4.5; //let lengthY = renderHeight - ((note.time + note.length - this.time) / this.timeScale) * renderHeight
 
             if (this.eventRenderCount >= 2) {
               for (var _i = 0; _i < this.eventRenderCount - 1; ++_i) {
@@ -49976,12 +49977,9 @@ var NoteRender = /*#__PURE__*/function () {
       }
     }
   }, {
-    key: "bpmRender",
-    value: function bpmRender(app, notes, baseBPM) {
-      this.bpmContainer.removeChildren();
-      var renderHeight = app.renderer.height - this.clickerOffset;
-
-      for (var t = this.time; t < this.time + this.timeScale;) {
+    key: "getNearestBPMBeat",
+    value: function getNearestBPMBeat(time, notes, baseBPM) {
+      if (time >= 0) {
         var lastBPMChange = {
           time: 0,
           type: 0,
@@ -49996,7 +49994,7 @@ var NoteRender = /*#__PURE__*/function () {
         try {
           for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
             var n = _step9.value;
-            if ((n.type === _CustomTypes.noteTypes.BPM || n.type === _CustomTypes.noteTypes.BPM_FAKE) && n.time <= t) lastBPMChange = n;
+            if ((n.type === _CustomTypes.noteTypes.BPM || n.type === _CustomTypes.noteTypes.BPM_FAKE) && n.time <= time) lastBPMChange = n;
           }
         } catch (err) {
           _iterator9.e(err);
@@ -50005,20 +50003,107 @@ var NoteRender = /*#__PURE__*/function () {
         }
 
         var tickDelta = this.bpmResolution * baseBPM / lastBPMChange.extra;
-        var closestBeat = Math.ceil((t - lastBPMChange.time) / tickDelta) * tickDelta + lastBPMChange.time;
+        var closestBeat = Math.round((time - lastBPMChange.time) / tickDelta) * tickDelta + lastBPMChange.time;
+        return closestBeat;
+      }
+
+      return 0;
+    }
+  }, {
+    key: "bpmRender",
+    value: function bpmRender(app, notes, baseBPM) {
+      var _iterator10 = _createForOfIteratorHelper(this.bpmContainer.children),
+          _step10;
+
+      try {
+        for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
+          var c = _step10.value;
+          if (c instanceof PIXI.Graphics) c.destroy();
+        }
+      } catch (err) {
+        _iterator10.e(err);
+      } finally {
+        _iterator10.f();
+      }
+
+      this.bpmContainer.removeChildren();
+      var renderHeight = app.renderer.height - this.clickerOffset;
+      var height = 20;
+      var textStyle = new PIXI.TextStyle({
+        fontSize: height,
+        fill: "white"
+      });
+
+      for (var t = this.time; t < this.time + this.timeScale;) {
+        var lastBPMChange = {
+          time: 0,
+          type: 0,
+          length: 0,
+          lane: 0,
+          extra: 0
+        };
+
+        var _iterator11 = _createForOfIteratorHelper(notes),
+            _step11;
+
+        try {
+          for (_iterator11.s(); !(_step11 = _iterator11.n()).done;) {
+            var n = _step11.value;
+            if ((n.type === _CustomTypes.noteTypes.BPM || n.type === _CustomTypes.noteTypes.BPM_FAKE) && n.time <= t) lastBPMChange = n;
+          }
+        } catch (err) {
+          _iterator11.e(err);
+        } finally {
+          _iterator11.f();
+        }
+
+        var tickDelta = this.bpmResolution * baseBPM / lastBPMChange.extra;
+        var closestBeat = Math.round((t - lastBPMChange.time) / tickDelta) * tickDelta + lastBPMChange.time;
         var y = renderHeight - (closestBeat - this.time) / this.timeScale * renderHeight;
         var g = new PIXI.Graphics();
         g.beginFill(Colors.GRAY);
-        var height = 20;
         g.drawRect(app.renderer.width / 2 - 2 * this.uiScale, y - height / 2, 4 * this.uiScale, height);
         this.bpmContainer.addChild(g);
+
+        if (this.bpmTickTimeVisible) {
+          var text = new PIXI.Text(closestBeat.toFixed(3), textStyle);
+          text.anchor.set(0.5, 0.5);
+          text.position.set(app.renderer.width / 2 - 3 * this.uiScale, y);
+          this.bpmContainer.addChild(text);
+        }
+
         t += tickDelta;
       }
     }
   }, {
     key: "moveView",
-    value: function moveView(delta) {
-      this.time += (delta >= 0 ? this.timeScale : -this.timeScale) / 5;
+    value: function moveView(delta, notes, baseBPM) {
+      this.time = this.getNearestBPMBeat(this.time, notes, baseBPM);
+      var lastBPMChange = {
+        time: 0,
+        type: 0,
+        length: 0,
+        lane: 0,
+        extra: 0
+      };
+
+      var _iterator12 = _createForOfIteratorHelper(notes),
+          _step12;
+
+      try {
+        for (_iterator12.s(); !(_step12 = _iterator12.n()).done;) {
+          var n = _step12.value;
+          if ((n.type === _CustomTypes.noteTypes.BPM || n.type === _CustomTypes.noteTypes.BPM_FAKE) && n.time <= this.time) lastBPMChange = n;
+        }
+      } catch (err) {
+        _iterator12.e(err);
+      } finally {
+        _iterator12.f();
+      }
+
+      var tickDelta = this.bpmResolution * baseBPM / lastBPMChange.extra;
+      this.time += delta >= 0 ? tickDelta : -tickDelta; //this.time += (delta >= 0 ? this.timeScale : -this.timeScale) / 5
+
       if (this.time < 0) this.time = 0;
     }
   }, {
@@ -50113,12 +50198,12 @@ var NoteRender = /*#__PURE__*/function () {
     value: function resetSprites() {
       var _this3 = this;
 
-      var _iterator10 = _createForOfIteratorHelper(this.sprites),
-          _step10;
+      var _iterator13 = _createForOfIteratorHelper(this.sprites),
+          _step13;
 
       try {
-        for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
-          var collection = _step10.value;
+        for (_iterator13.s(); !(_step13 = _iterator13.n()).done;) {
+          var collection = _step13.value;
           collection.objects.forEach(function (obj) {
             obj.sprite.position.set(120000, 120000);
             obj.sprite.width = _this3.uiScale;
@@ -50130,9 +50215,9 @@ var NoteRender = /*#__PURE__*/function () {
           collection.usedCount = 0;
         }
       } catch (err) {
-        _iterator10.e(err);
+        _iterator13.e(err);
       } finally {
-        _iterator10.f();
+        _iterator13.f();
       }
     }
   }, {
@@ -50176,20 +50261,20 @@ var NoteRender = /*#__PURE__*/function () {
   }, {
     key: "resetEvents",
     value: function resetEvents() {
-      var _iterator11 = _createForOfIteratorHelper(this.events),
-          _step11;
+      var _iterator14 = _createForOfIteratorHelper(this.events),
+          _step14;
 
       try {
-        for (_iterator11.s(); !(_step11 = _iterator11.n()).done;) {
-          var ev = _step11.value;
+        for (_iterator14.s(); !(_step14 = _iterator14.n()).done;) {
+          var ev = _step14.value;
           ev.base.position.set(120000, 120000);
           ev.length.position.set(120000, 120000);
           ev.text.position.set(120000, 120000);
         }
       } catch (err) {
-        _iterator11.e(err);
+        _iterator14.e(err);
       } finally {
-        _iterator11.f();
+        _iterator14.f();
       }
 
       this.eventRenderCount = 0;
@@ -53710,7 +53795,7 @@ var NoteManager = /*#__PURE__*/function () {
     this.lastCandidates = [];
     this.lastCandidateIndex = 0;
     this.selectedNote = {
-      type: 0,
+      type: -1,
       time: 0,
       lane: 0,
       length: 0,
@@ -53744,8 +53829,8 @@ var NoteManager = /*#__PURE__*/function () {
 
         try {
           for (_iterator.s(); !(_step = _iterator.n()).done;) {
-            var _n39 = _step.value;
-            if ((_n39.type === _CustomTypes.noteTypes.BPM || _n39.type === _CustomTypes.noteTypes.BPM_FAKE) && _n39.time <= mouseTime) lastBPMChange = _n39;
+            var _n40 = _step.value;
+            if ((_n40.type === _CustomTypes.noteTypes.BPM || _n40.type === _CustomTypes.noteTypes.BPM_FAKE) && _n40.time <= mouseTime) lastBPMChange = _n40;
           }
         } catch (err) {
           _iterator.e(err);
@@ -54751,86 +54836,10 @@ var NoteManager = /*#__PURE__*/function () {
             n.selected = false;
           });
           this.needsRefreshing = true; //console.log(this.notes.length)
-        }
-      } else if (ev.type === "mousemove") {
-        var _mouseTime = this.getTimeFromY(ev, app, noteRender);
-
-        var _lastBPMChange = {
-          time: 0,
-          type: 0,
-          length: 0,
-          lane: 0,
-          extra: 0
-        };
-
-        var _iterator41 = _createForOfIteratorHelper(this.notes),
-            _step41;
-
-        try {
-          for (_iterator41.s(); !(_step41 = _iterator41.n()).done;) {
-            var _n42 = _step41.value;
-            if ((_n42.type === _CustomTypes.noteTypes.BPM || _n42.type === _CustomTypes.noteTypes.BPM_FAKE) && _n42.time <= _mouseTime) _lastBPMChange = _n42;
-          }
-        } catch (err) {
-          _iterator41.e(err);
-        } finally {
-          _iterator41.f();
-        }
-
-        var _tickDelta = noteRender.bpmResolution * baseBPM / _lastBPMChange.extra;
-
-        var _closestBeat = Math.round((_mouseTime - _lastBPMChange.time) / _tickDelta) * _tickDelta + _lastBPMChange.time;
-
-        if (ev.which === 1) {
-          //holding down left button
-          if (this.selectedNote.type === _CustomTypes.noteTypes.FX_G || this.selectedNote.type === _CustomTypes.noteTypes.FX_ALL || this.selectedNote.type === _CustomTypes.noteTypes.FX_B) {
-            var _iterator42 = _createForOfIteratorHelper(this.notes),
-                _step42;
-
-            try {
-              for (_iterator42.s(); !(_step42 = _iterator42.n()).done;) {
-                var _n40 = _step42.value;
-                if (eventTypesList.includes(_n40.type) && _n40.time === this.selectedNote.time) _n40.time = _closestBeat;
-              }
-            } catch (err) {
-              _iterator42.e(err);
-            } finally {
-              _iterator42.f();
-            }
-          }
-
-          this.selectedNote.time = _closestBeat;
-        }
-
-        if (ev.which === 3) {
-          //holding down right button
-          if (_closestBeat >= this.selectedNote.time) {
-            this.selectedNote.length = _closestBeat - this.selectedNote.time;
-
-            if (this.selectedNote.type === _CustomTypes.noteTypes.FX_G || this.selectedNote.type === _CustomTypes.noteTypes.FX_ALL || this.selectedNote.type === _CustomTypes.noteTypes.FX_B) {
-              var _iterator43 = _createForOfIteratorHelper(this.notes),
-                  _step43;
-
-              try {
-                for (_iterator43.s(); !(_step43 = _iterator43.n()).done;) {
-                  var _n41 = _step43.value;
-                  if (eventTypesList.includes(_n41.type) && _n41.time === this.selectedNote.time) _n41.length = _closestBeat - this.selectedNote.time;
-                }
-              } catch (err) {
-                _iterator43.e(err);
-              } finally {
-                _iterator43.f();
-              }
-            }
-          }
-
-          this.needsRefreshing = true;
-        }
-      } else if (ev.type === "mouseup") {
-        if (this.mode === Modes.select) {
+        } else if (this.mode === Modes.select) {
           var selectables = [];
 
-          var _mouseTime2 = this.getTimeFromY(ev, app, noteRender);
+          var _mouseTime = this.getTimeFromY(ev, app, noteRender);
 
           if (lane === -3) {
             //bpm
@@ -54893,23 +54902,23 @@ var NoteManager = /*#__PURE__*/function () {
 
           var candidates = [];
 
-          var _iterator44 = _createForOfIteratorHelper(this.notes),
-              _step44;
+          var _iterator41 = _createForOfIteratorHelper(this.notes),
+              _step41;
 
           try {
-            for (_iterator44.s(); !(_step44 = _iterator44.n()).done;) {
-              var _n43 = _step44.value;
+            for (_iterator41.s(); !(_step41 = _iterator41.n()).done;) {
+              var _n39 = _step41.value;
 
-              if (selectables.includes(_n43.type) && _mouseTime2 > _n43.time - 0.0625 && _mouseTime2 < _n43.time + _n43.length + 0.0625) {
-                candidates.push(_n43);
+              if (selectables.includes(_n39.type) && _mouseTime > _n39.time - 0.0625 && _mouseTime < _n39.time + _n39.length + 0.0625) {
+                candidates.push(_n39);
               }
 
-              _n43.selected = false;
+              _n39.selected = false;
             }
           } catch (err) {
-            _iterator44.e(err);
+            _iterator41.e(err);
           } finally {
-            _iterator44.f();
+            _iterator41.f();
           }
 
           if (candidates.length > 0) {
@@ -54923,7 +54932,7 @@ var NoteManager = /*#__PURE__*/function () {
               var bestIndex = 0;
 
               for (var i = 0; i < candidates.length; ++i) {
-                if (Math.abs(_mouseTime2 - candidates[i].time) < Math.abs(_mouseTime2 - candidates[bestIndex].time)) {
+                if (Math.abs(_mouseTime - candidates[i].time) < Math.abs(_mouseTime - candidates[bestIndex].time)) {
                   bestIndex = i;
                 }
               }
@@ -54932,25 +54941,107 @@ var NoteManager = /*#__PURE__*/function () {
               this.selectedNote = candidates[bestIndex];
               candidates[bestIndex].selected = true;
             }
+          } else {
+            this.selectedNote = {
+              type: -1,
+              time: 0,
+              lane: 0,
+              length: 0,
+              extra: 0
+            };
           }
 
           this.needsRefreshing = true;
           this.lastCandidates = candidates;
         }
-      }
+      } else if (ev.type === "mousemove") {
+        var _mouseTime2 = this.getTimeFromY(ev, app, noteRender);
 
-      var _iterator45 = _createForOfIteratorHelper(this.notes),
-          _step45;
+        var _lastBPMChange = {
+          time: 0,
+          type: 0,
+          length: 0,
+          lane: 0,
+          extra: 0
+        };
 
-      try {
-        for (_iterator45.s(); !(_step45 = _iterator45.n()).done;) {
-          var d = _step45.value;
-          d.lane = _NoteLoader.NoteLoader.getCrossAtTime(d.time, this.notes);
+        var _iterator42 = _createForOfIteratorHelper(this.notes),
+            _step42;
+
+        try {
+          for (_iterator42.s(); !(_step42 = _iterator42.n()).done;) {
+            var _n43 = _step42.value;
+            if ((_n43.type === _CustomTypes.noteTypes.BPM || _n43.type === _CustomTypes.noteTypes.BPM_FAKE) && _n43.time <= _mouseTime2) _lastBPMChange = _n43;
+          }
+        } catch (err) {
+          _iterator42.e(err);
+        } finally {
+          _iterator42.f();
         }
-      } catch (err) {
-        _iterator45.e(err);
-      } finally {
-        _iterator45.f();
+
+        var _tickDelta = noteRender.bpmResolution * baseBPM / _lastBPMChange.extra;
+
+        var _closestBeat = Math.round((_mouseTime2 - _lastBPMChange.time) / _tickDelta) * _tickDelta + _lastBPMChange.time;
+
+        if (ev.which === 1) {
+          //holding down left button
+          if (this.selectedNote.type === _CustomTypes.noteTypes.FX_G || this.selectedNote.type === _CustomTypes.noteTypes.FX_ALL || this.selectedNote.type === _CustomTypes.noteTypes.FX_B) {
+            var _iterator43 = _createForOfIteratorHelper(this.notes),
+                _step43;
+
+            try {
+              for (_iterator43.s(); !(_step43 = _iterator43.n()).done;) {
+                var _n41 = _step43.value;
+                if (eventTypesList.includes(_n41.type) && _n41.time === this.selectedNote.time) _n41.time = _closestBeat;
+              }
+            } catch (err) {
+              _iterator43.e(err);
+            } finally {
+              _iterator43.f();
+            }
+          }
+
+          if (this.selectedNote.type !== -1) this.selectedNote.time = _closestBeat;
+        }
+
+        if (ev.which === 3) {
+          //holding down right button
+          if (_closestBeat >= this.selectedNote.time && this.selectedNote.type !== -1) {
+            this.selectedNote.length = _closestBeat - this.selectedNote.time;
+
+            if (this.selectedNote.type === _CustomTypes.noteTypes.FX_G || this.selectedNote.type === _CustomTypes.noteTypes.FX_ALL || this.selectedNote.type === _CustomTypes.noteTypes.FX_B) {
+              var _iterator44 = _createForOfIteratorHelper(this.notes),
+                  _step44;
+
+              try {
+                for (_iterator44.s(); !(_step44 = _iterator44.n()).done;) {
+                  var _n42 = _step44.value;
+                  if (eventTypesList.includes(_n42.type) && _n42.time === this.selectedNote.time) _n42.length = _closestBeat - this.selectedNote.time;
+                }
+              } catch (err) {
+                _iterator44.e(err);
+              } finally {
+                _iterator44.f();
+              }
+            }
+          }
+
+          this.needsRefreshing = true;
+        }
+      } else if (ev.type === "mouseup") {
+        var _iterator45 = _createForOfIteratorHelper(this.notes),
+            _step45;
+
+        try {
+          for (_iterator45.s(); !(_step45 = _iterator45.n()).done;) {
+            var d = _step45.value;
+            d.lane = _NoteLoader.NoteLoader.getCrossAtTime(d.time, this.notes);
+          }
+        } catch (err) {
+          _iterator45.e(err);
+        } finally {
+          _iterator45.f();
+        }
       }
     }
   }, {
@@ -55047,7 +55138,7 @@ function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o =
 
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
-var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9;
 
 var app = new PIXI.Application({
   width: window.innerWidth,
@@ -55072,10 +55163,15 @@ var noteManager = new _NoteManager.NoteManager(app, notes);
 var needsRefresh = false;
 var timeWarp = 1.5;
 var songBpm = 120;
-var sound = new _howler.Howl({
+var greenAudioSource = new _howler.Howl({
   src: [""]
 });
-sound.volume(0.25);
+var redAudioSource = new _howler.Howl({
+  src: [""]
+});
+var blueAudioSource = new _howler.Howl({
+  src: [""]
+});
 var divStartPosition = {
   x: 0,
   y: 0
@@ -55121,6 +55217,42 @@ Array.from(document.getElementsByClassName("topBar")).forEach(function (bar) {
     }
   });
 });
+var arr = Array.from(document.getElementsByClassName("tabButton"));
+
+var _loop = function _loop(i) {
+  ;
+  arr[i].addEventListener("click", function (ev) {
+    var others = Array.from(document.getElementsByClassName("tabButton"));
+
+    for (var _i3 = 0, _others = others; _i3 < _others.length; _i3++) {
+      var o = _others[_i3];
+      o.classList.remove("selected");
+    }
+
+    ;
+    ev.srcElement.classList.add("selected");
+    var div = document.getElementById("divView");
+
+    if (div) {
+      var c = Array.from(div.children);
+
+      for (var j = 0; j < c.length; ++j) {
+        if (j === i) {
+          ;
+          c[j].style.display = "block";
+        } else {
+          ;
+          c[j].style.display = "none";
+        }
+      }
+    }
+  });
+};
+
+for (var i = 0; i < arr.length; ++i) {
+  _loop(i);
+}
+
 (_a = document.getElementById("inputBPM")) === null || _a === void 0 ? void 0 : _a.addEventListener("change", function (ev) {
   if (ev.srcElement) {
     var value = Number(ev.srcElement.value);
@@ -55184,6 +55316,264 @@ Array.from(document.getElementsByClassName("topBar")).forEach(function (bar) {
 (_j = document.getElementById("inputNoteExtra")) === null || _j === void 0 ? void 0 : _j.addEventListener("change", function (ev) {
   if (ev.srcElement) noteManager.selectedNote.extra = Number(ev.srcElement.value);
 });
+(_k = document.getElementById("inputShortcutsToggle")) === null || _k === void 0 ? void 0 : _k.addEventListener("change", function (ev) {
+  if (ev.srcElement && divTooltip) {
+    divTooltip.style.display = ev.srcElement.checked ? "block" : "none";
+  }
+});
+(_l = document.getElementById("inputTickTime")) === null || _l === void 0 ? void 0 : _l.addEventListener("change", function (ev) {
+  if (ev.srcElement && noteRender) {
+    noteRender.bpmTickTimeVisible = ev.srcElement.checked;
+  }
+});
+(_m = document.getElementById("divDropGreen")) === null || _m === void 0 ? void 0 : _m.addEventListener("click", function (ev) {
+  //console.log(ev)
+  var input = document.createElement("input");
+  input.type = "file";
+  input.addEventListener("change", function (ev) {
+    if (input.files) {
+      var file = input.files[0]; //console.log(fileArray)
+
+      toBase64(file).then(function (res) {
+        if (res.includes("data:audio")) {
+          greenAudioSource = new _howler.Howl({
+            src: [res]
+          });
+          console.log("loaded green track");
+        }
+      }).catch(function (err) {
+        return console.error("LOADING FILE ERROR", err);
+      });
+    }
+  });
+  input.click();
+});
+(_o = document.getElementById("divDropGreen")) === null || _o === void 0 ? void 0 : _o.addEventListener("drop", function (ev) {
+  if (ev.dataTransfer) {
+    var file = ev.dataTransfer.files[0];
+    toBase64(file).then(function (res) {
+      if (res.includes("data:audio")) {
+        greenAudioSource = new _howler.Howl({
+          src: [res]
+        });
+        console.log("loaded green track");
+      }
+    }).catch(function (err) {
+      return console.error("LOADING FILE ERROR", err);
+    });
+  }
+
+  if (ev.srcElement) {
+    ev.srcElement.classList.remove("selected");
+  }
+
+  ev.preventDefault();
+});
+(_p = document.getElementById("divDropGreen")) === null || _p === void 0 ? void 0 : _p.addEventListener("dragenter", function (ev) {
+  if (ev.srcElement) {
+    ev.srcElement.classList.add("selected");
+  }
+
+  ev.preventDefault();
+});
+(_q = document.getElementById("divDropGreen")) === null || _q === void 0 ? void 0 : _q.addEventListener("dragleave", function (ev) {
+  if (ev.target) {
+    ev.srcElement.classList.remove("selected");
+  }
+
+  ev.preventDefault();
+});
+(_r = document.getElementById("divDropRed")) === null || _r === void 0 ? void 0 : _r.addEventListener("click", function (ev) {
+  //console.log(ev)
+  var input = document.createElement("input");
+  input.type = "file";
+  input.addEventListener("change", function (ev) {
+    if (input.files) {
+      var file = input.files[0]; //console.log(fileArray)
+
+      toBase64(file).then(function (res) {
+        if (res.includes("data:audio")) {
+          redAudioSource = new _howler.Howl({
+            src: [res]
+          });
+          console.log("loaded green track");
+        }
+      }).catch(function (err) {
+        return console.error("LOADING FILE ERROR", err);
+      });
+    }
+  });
+  input.click();
+});
+(_s = document.getElementById("divDropRed")) === null || _s === void 0 ? void 0 : _s.addEventListener("drop", function (ev) {
+  if (ev.dataTransfer) {
+    var file = ev.dataTransfer.files[0];
+    toBase64(file).then(function (res) {
+      if (res.includes("data:audio")) {
+        redAudioSource = new _howler.Howl({
+          src: [res]
+        });
+        console.log("loaded green track");
+      }
+    }).catch(function (err) {
+      return console.error("LOADING FILE ERROR", err);
+    });
+  }
+
+  if (ev.srcElement) {
+    ev.srcElement.classList.remove("selected");
+  }
+
+  ev.preventDefault();
+});
+(_t = document.getElementById("divDropRed")) === null || _t === void 0 ? void 0 : _t.addEventListener("dragenter", function (ev) {
+  if (ev.srcElement) {
+    ev.srcElement.classList.add("selected");
+  }
+
+  ev.preventDefault();
+});
+(_u = document.getElementById("divDropRed")) === null || _u === void 0 ? void 0 : _u.addEventListener("dragleave", function (ev) {
+  if (ev.target) {
+    ev.srcElement.classList.remove("selected");
+  }
+
+  ev.preventDefault();
+});
+(_v = document.getElementById("divDropBlue")) === null || _v === void 0 ? void 0 : _v.addEventListener("click", function (ev) {
+  //console.log(ev)
+  var input = document.createElement("input");
+  input.type = "file";
+  input.addEventListener("change", function (ev) {
+    if (input.files) {
+      var file = input.files[0]; //console.log(fileArray)
+
+      toBase64(file).then(function (res) {
+        if (res.includes("data:audio")) {
+          blueAudioSource = new _howler.Howl({
+            src: [res]
+          });
+          console.log("loaded green track");
+        }
+      }).catch(function (err) {
+        return console.error("LOADING FILE ERROR", err);
+      });
+    }
+  });
+  input.click();
+});
+(_w = document.getElementById("divDropBlue")) === null || _w === void 0 ? void 0 : _w.addEventListener("drop", function (ev) {
+  if (ev.dataTransfer) {
+    var file = ev.dataTransfer.files[0];
+    toBase64(file).then(function (res) {
+      if (res.includes("data:audio")) {
+        blueAudioSource = new _howler.Howl({
+          src: [res]
+        });
+        console.log("loaded green track");
+      }
+    }).catch(function (err) {
+      return console.error("LOADING FILE ERROR", err);
+    });
+  }
+
+  if (ev.srcElement) {
+    ev.srcElement.classList.remove("selected");
+  }
+
+  ev.preventDefault();
+});
+(_x = document.getElementById("divDropBlue")) === null || _x === void 0 ? void 0 : _x.addEventListener("dragenter", function (ev) {
+  if (ev.srcElement) {
+    ev.srcElement.classList.add("selected");
+  }
+
+  ev.preventDefault();
+});
+(_y = document.getElementById("divDropBlue")) === null || _y === void 0 ? void 0 : _y.addEventListener("dragleave", function (ev) {
+  if (ev.target) {
+    ev.srcElement.classList.remove("selected");
+  }
+
+  ev.preventDefault();
+});
+(_z = document.getElementById("divDropChart")) === null || _z === void 0 ? void 0 : _z.addEventListener("click", function (ev) {
+  //console.log(ev)
+  var input = document.createElement("input");
+  input.type = "file";
+  input.addEventListener("change", function (ev) {
+    if (input.files) {
+      var file = input.files[0];
+
+      if (file.name.toLowerCase().includes(".xmk")) {
+        _NoteLoader.NoteLoader.parseChart(file, notes).then(function (bpm) {
+          songBpm = bpm ? bpm : 120;
+          updateGUI();
+        });
+      }
+    }
+  });
+  input.click();
+});
+(_0 = document.getElementById("divDropChart")) === null || _0 === void 0 ? void 0 : _0.addEventListener("drop", function (ev) {
+  if (ev.dataTransfer) {
+    var file = ev.dataTransfer.files[0];
+
+    if (file.name.toLowerCase().includes(".xmk")) {
+      _NoteLoader.NoteLoader.parseChart(file, notes).then(function (bpm) {
+        songBpm = bpm ? bpm : 120;
+        updateGUI();
+      });
+    }
+  }
+
+  if (ev.srcElement) {
+    ev.srcElement.classList.remove("selected");
+  }
+
+  ev.preventDefault();
+});
+(_1 = document.getElementById("divDropChart")) === null || _1 === void 0 ? void 0 : _1.addEventListener("dragenter", function (ev) {
+  if (ev.srcElement) {
+    ev.srcElement.classList.add("selected");
+  }
+
+  ev.preventDefault();
+});
+(_2 = document.getElementById("divDropChart")) === null || _2 === void 0 ? void 0 : _2.addEventListener("dragleave", function (ev) {
+  if (ev.target) {
+    ev.srcElement.classList.remove("selected");
+  }
+
+  ev.preventDefault();
+});
+(_3 = document.getElementById("divDropGreen")) === null || _3 === void 0 ? void 0 : _3.addEventListener("dragover", function (ev) {
+  return ev.preventDefault();
+});
+(_4 = document.getElementById("divDropRed")) === null || _4 === void 0 ? void 0 : _4.addEventListener("dragover", function (ev) {
+  return ev.preventDefault();
+});
+(_5 = document.getElementById("divDropBlue")) === null || _5 === void 0 ? void 0 : _5.addEventListener("dragover", function (ev) {
+  return ev.preventDefault();
+});
+(_6 = document.getElementById("divDropChart")) === null || _6 === void 0 ? void 0 : _6.addEventListener("dragover", function (ev) {
+  return ev.preventDefault();
+});
+(_7 = document.getElementById("inputSliderGreen")) === null || _7 === void 0 ? void 0 : _7.addEventListener("change", function (ev) {
+  if (ev.srcElement) {
+    greenAudioSource.volume(Number(ev.srcElement.value));
+  }
+});
+(_8 = document.getElementById("inputSliderRed")) === null || _8 === void 0 ? void 0 : _8.addEventListener("change", function (ev) {
+  if (ev.srcElement) {
+    redAudioSource.volume(Number(ev.srcElement.value));
+  }
+});
+(_9 = document.getElementById("inputSliderBlue")) === null || _9 === void 0 ? void 0 : _9.addEventListener("change", function (ev) {
+  if (ev.srcElement) {
+    blueAudioSource.volume(Number(ev.srcElement.value));
+  }
+});
 window.addEventListener("resize", function () {
   app.renderer.resize(window.innerWidth, window.innerHeight);
 });
@@ -55230,7 +55620,8 @@ window.addEventListener("contextmenu", function (ev) {
   return ev.preventDefault();
 });
 window.addEventListener("wheel", function (delta) {
-  return noteRender.moveView(-delta.deltaY);
+  noteRender.moveView(-delta.deltaY, notes, songBpm);
+  updateGUI();
 });
 window.addEventListener("keyup", function (ev) {
   return keyPress(ev);
@@ -55246,18 +55637,19 @@ function init() {
     }
   }
 
-  var _loop = function _loop(i) {
-    divClassSelector.children[i].addEventListener("click", function (ev) {
-      noteManager.setNoteClass(i);
+  var _loop2 = function _loop2(_i) {
+    divClassSelector.children[_i].addEventListener("click", function (ev) {
+      noteManager.setNoteClass(_i);
       updateGUI();
     });
-    divClassSelector.children[i].addEventListener("dragstart", function (ev) {
+
+    divClassSelector.children[_i].addEventListener("dragstart", function (ev) {
       return ev.preventDefault();
     });
   };
 
-  for (var i = 0; i < divClassSelector.children.length; ++i) {
-    _loop(i);
+  for (var _i = 0; _i < divClassSelector.children.length; ++_i) {
+    _loop2(_i);
   }
 
   divModes.children[0].addEventListener("click", function (ev) {
@@ -55285,12 +55677,14 @@ function init() {
 
 init();
 app.ticker.add(function (delta) {
-  if (sound.playing()) {
-    var time = sound.seek();
+  if (greenAudioSource.playing()) {
+    var time = greenAudioSource.seek();
     if (typeof time == "number") noteRender.setViewOffset(time / (240 / songBpm));
     updateGUI();
   } else {
-    sound.seek(noteRender.time * (240 / songBpm));
+    greenAudioSource.seek(noteRender.time * (240 / songBpm));
+    redAudioSource.seek(noteRender.time * (240 / songBpm));
+    blueAudioSource.seek(noteRender.time * (240 / songBpm));
   }
 
   noteRender.setTimeScale(timeWarp);
@@ -55307,13 +55701,17 @@ app.ticker.add(function (delta) {
 function keyPress(ev) {
   //console.log(ev)
   if (ev.target.tagName === "BODY") {
-    if (ev.key == "Home" && !sound.playing()) {
+    if (ev.key == "Home" && !greenAudioSource.playing()) {
       noteRender.setViewOffset(0);
     } else if (ev.key == " ") {
-      if (sound.playing()) {
-        sound.stop();
+      if (greenAudioSource.playing()) {
+        greenAudioSource.stop();
+        redAudioSource.stop();
+        blueAudioSource.stop();
       } else {
-        sound.play();
+        greenAudioSource.play();
+        redAudioSource.play();
+        blueAudioSource.play();
       }
     } else if (ev.key == "-") {
       timeWarp += 0.1;
@@ -55339,7 +55737,7 @@ function keyPress(ev) {
           } else {
             toBase64(file).then(function (res) {
               if (res.includes("data:audio")) {
-                sound = new _howler.Howl({
+                greenAudioSource = new _howler.Howl({
                   src: [res]
                 });
                 console.log("loaded song");
@@ -55379,10 +55777,10 @@ function updateGUI() {
     _iterator2.f();
   }
 
-  inputBPM.value = songBpm.toFixed(2);
-  inputPos.value = noteRender.time.toFixed(2);
-  inputTimeScale.value = timeWarp.toFixed(2);
-  inputUIScale.value = noteRender.uiScale.toFixed(2);
+  inputBPM.value = songBpm.toFixed(3);
+  inputPos.value = noteRender.time.toFixed(3);
+  inputTimeScale.value = timeWarp.toFixed(3);
+  inputUIScale.value = noteRender.uiScale.toFixed(0);
   inputBPMRes.value = (1 / noteRender.bpmResolution).toString();
   var cls = noteManager.noteClass;
   var children = divClassSelector.children;
@@ -55462,9 +55860,9 @@ function updateGUI() {
 
   var index = -1;
 
-  for (var i = 0; i < inputNoteType.options.length; ++i) {
+  for (var _i2 = 0; _i2 < inputNoteType.options.length; ++_i2) {
     //console.log(t)
-    if (Number(inputNoteType.options[i].value) === noteManager.selectedNote.type) index = i;
+    if (Number(inputNoteType.options[_i2].value) === noteManager.selectedNote.type) index = _i2;
   }
 
   inputNoteType.selectedIndex = index;
@@ -55517,7 +55915,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52940" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "57913" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
