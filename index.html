@@ -3,13 +3,13 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Sunburn v1.1</title>
+        <title>Sunburn v1.2</title>
     <script src="./style.c61ab535.js"></script></head>
     <body>
         <link rel="stylesheet" href="./style.c61ab535.css">
         <div id="divMain">
             <div class="topBar">
-                <p>Sunburn Version 1.1</p>
+                <p>Sunburn Version 1.2</p>
             </div>
             <div class="tabView flex">
                 <button class="tabButton selected">Edit</button>
@@ -171,7 +171,6 @@
                                     <label for="inputTickTime">Enable BPM Tick Time</label>
                                 </td>
                             </tr>
-                            
                         </tbody>
                     </table>
                 </div>
@@ -239,7 +238,7 @@
                                     <label for="inputOffsetGreen">Green Offset (seconds):</label>
                                 </td>
                                 <td>
-                                    <input type="number" id="inputOffsetGreen">
+                                    <input type="number" id="inputOffsetGreen" min="0" step="any">
                                 </td>
                             </tr>
                             <tr>
@@ -247,7 +246,7 @@
                                     <label for="inputOffsetRed">Red Offset (seconds):</label>
                                 </td>
                                 <td>
-                                    <input type="number" id="inputOffsetRed">
+                                    <input type="number" id="inputOffsetRed" min="0" step="any">
                                 </td>
                             </tr>
                             <tr>
@@ -255,26 +254,27 @@
                                     <label for="inputOffsetBlue">Green Offset (seconds):</label>
                                 </td>
                                 <td>
-                                    <input type="number" id="inputOffsetBlue">
+                                    <input type="number" id="inputOffsetBlue" min="0" step="any">
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                     <p>
                         <br>
-                        Positive offset moves track down, negative offset moves track up <br>
-                        (Enable waveforms to see tracks)
+                        Offset moves the start of the audio playback when pressing space <br>
+                        Negative offsets are not supported
                     </p>
+                    <!--
                     <div class="separator"></div>
                     <table>
                         <colgroup>
-                            <col style="width: 5%;">
-                            <col style="width: auto;">
+                            <col style="width: 5%;" />
+                            <col style="width: auto;" />
                         </colgroup>
                         <tbody>
                             <tr>
                                 <td>
-                                    <input type="checkbox" id="inputWaveform">
+                                    <input type="checkbox" id="inputWaveform"./>
                                 </td>
                                 <td>
                                     <label for="inputWaveform">Enable Waveform Display (WARNING: GPU Intensive)</label>
@@ -282,6 +282,7 @@
                             </tr>
                         </tbody>
                     </table>
+                    -->
                 </div>
             </div>
         </div>
